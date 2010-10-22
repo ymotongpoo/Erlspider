@@ -1,0 +1,8 @@
+MANIFEST
+*.beam
+.omakedb*
+*.omc
+*.so
+*.o
+*~
+test/log/*
