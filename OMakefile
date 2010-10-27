@@ -1,0 +1,27 @@
+########################################################################
+# Phony targets are scoped, so you probably want to declare them first.
+#
+.PHONY: all clean
+
+# eprintln( $(string $(beams)) )
+testerls=$(glob $(string $(TESTDIR)/*$(ERL_EXT)))
+
+# traverse the subdirs except $(dirs)
+Subdirs_except(dirs) =
+ # need to export since .SUBDIRS is evaluated in the global scope
+ export VISIT_SUBDIRS
+
+ sub_omakefiles = $(glob i, */OMakefile)
+ subdirs = $(sub_omakefiles.map $(dirname))
+
+ VISIT_SUBDIRS=$(set-diff $(subdirs), $(dirs))
+
+ # The rule
+ .SUBDIRS: $(VISIT_SUBDIRS)
+
+# traverse all the subdirs
+Subdirs() =
+ Subdirs_except($(array))
+
+Subdirs()
+

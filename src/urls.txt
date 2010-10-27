@@ -1,0 +1,7 @@
+{"text", "http://r.tabelog.com/tokyo/A1303/A130301/13003491/"}.
+{"text", "http://www.erlang.org/doc/man/lists.html#all-2"}.
+{"text", "http://pragdave.pragprog.com/pragdave/2007/04/a_first_erlang_.html"}.
+{"text", "http://d.hatena.ne.jp/ymotongpoo/searchdiary?word=erlang"}.
+{"text", "http://d.hatena.ne.jp/perezvon/20070430/1177919770"}.
+{"text", "http://blog.overlasting.net/2007-05-09-1.html"}.
+

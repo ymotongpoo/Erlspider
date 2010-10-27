@@ -1,0 +1,16 @@
+MODULE = spider
+FILES = $(MODULE).erl
+TARGET = $(MODULE).beam
+
+.PHONY: all $(TARGET)
+
+.DEFAULT: all
+
+all: $(TARGET)
+
+$(TARGET): $(FILES)
+    $(ERLC) $(FILES)
+    $(ERL) -noshell -s $(MODULE) test -s init stop
+
+clean:
+    rm -f *.beam

@@ -9,61 +9,50 @@
 -module(spider).
 -author('ymotongpoo@gmail.com').
 
+-define(EUNIT, false).
+
 -export([start/2, stop/0]).
 -export([init/1]).
--export([status_check/1]).
--export([url_scanner/1]).
+-export([dump_webcontent_to_file/2]).
 -export([main/2]).
 -compile(export_all).
 
 %%------------------------------------------------------------------------------
 
 init({UrlFile, DownloadDir})->
-    Flag = file:open(UrlFile, [read]),
+    Flag = file:consult(UrlFile),
     case Flag of
-        {ok, Fd} ->
-            Urls = url_scanner(Fd),
-            lists:foreach(fun(X) -> erlang:display(X) end, Urls),
-            main(Urls, DownloadDir),
+        {ok, UrlPairs} ->
+            main(UrlPairs, DownloadDir),
             ok;
-        {error, Reason} ->
-            erlang:display(Reason),
+        {error, _} ->
+            erlang:display("spider:init/1 : No such file"),
             ok
     end.
 
 
-url_scanner(Fd)->
-    url_scanner(Fd, []).
-url_scanner(Fd, Accu)->
-    case file:read_line(Fd) of
-        {ok, Line} -> 
-            url_scanner(Fd, [Line | Accu]);
-        eof ->
-            Accu;
+dump_webcontent_to_file(Filename, Body)->
+    case file:open(Filename, [write, binary]) of
+        {ok, Fd} ->
+            case file:write(Fd, erlang:list_to_binary(Body)) of
+                ok ->
+                    file:close(Fd);    % fix here
+                {error, Reason} ->
+                    erlang:display(Filename ++ " : [error] " ++ Reason),
+                    timer:sleep(1000),
+                    scrape(Filename)
+            end;
         {error, Reason} ->
-            erlang:display(Reason)
+            erlang:display(Filename ++ " : [error] " ++ Reason),
+            timer:sleep(1000),
+            scrape(Filename)
     end.
 
 
 scrape(Url)->
     case httpc:request(Url) of
         {ok, {_, _, Body}} ->
-            case file:open(Url, [write]) of
-                {ok, Fd} ->
-                    case file:write(Fd, erlang:list_to_binary(Body)) of
-                        ok ->
-                            file:sync(Fd),     % fix here
-                            file:close(Fd);    % fix here
-                        {error, Reason} ->
-                            erlang:display(Url ++ " : [error] " ++ Reason),
-                            timer:sleep(1000),
-                            scrape(Url)
-                    end;
-                {error, Reason} ->
-                    erlang:display(Url ++ " : [error] " ++ Reason),
-                    timer:sleep(1000),
-                    scrape(Url)
-            end;
+            dump_webcontent_to_file(Url, Body);
         {error, Reason} ->
             erlang:display(Url ++ " : [error] " ++ Reason),
             timer:sleep(1000),
@@ -71,17 +60,23 @@ scrape(Url)->
     end.
 
 
-main(Urls, DownloadDir)->
-    start(Urls, DownloadDir),
+collect_urls(UrlPairs, Tag)->
+    Filtered = lists:filter(fun({X,_}) -> X == Tag end, UrlPairs),
+    lists:map(fun({_, Y}) -> Y end, Filtered).
+    
+
+
+main(UrlPairs, DownloadDir)->
+    start(UrlPairs, DownloadDir),
     stop(),
     ok.
 
 
-start(Urls, DownloadDir)->
+start(UrlPairs, DownloadDir)->
     erlang:display(DownloadDir),
+    Urls = collect_urls(UrlPairs, "text"),
     inets:start(),
-    Stats = lists:map(fun(Url) -> spawn(?MODULE, scrape, [Url]) end, Urls),
-    status_check(Stats),
+    lists:foreach(scrape, Urls),
     ok.
                      
 
@@ -90,23 +85,26 @@ stop() ->
     ok.
     
 
-status_check(Stats)->
-    case lists:all(fun(X) -> X == ok end, Stats) of
-        true ->
-            ok;
-        false ->
-            timer:sleep(1000),
-            status_check(Stats)
-    end.
-    
-
 
 % ============================= test code 
--ifdef(DEBUG).
+-ifdef(EUNIT).
 -include_lib("eunit/include/eunit.hrl").
 
-erlspider_test()->
-    ok=erlspider:start(),
-    ok=erlspider:stop().
+test_pairs() ->
+    [{"foo", "spam"},
+     {"foo", "egg"},
+     {"foo", "ham"},
+     {"bar", "spam"},
+     {"bar", "egg"},
+     {"bar", "ham"},
+     {"buz", "hoge"},
+     {"buz", "piyo"}
+    ].
+             
+
+collect_urls_test_()->
+    [?_assert( [] =:= collect_urls(test_pairs(), "qux") ),
+     ?_assert( ["hoge", "piyo"] =:= collect_urls(test_pairs(), "buz") )
+    ].
 
 -endif.
